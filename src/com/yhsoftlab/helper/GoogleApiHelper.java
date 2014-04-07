@@ -28,13 +28,13 @@ import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListe
 import com.google.android.gms.games.Games;
 import com.google.android.gms.games.GamesActivityResultCodes;
 
-public class PlayGameServiceHelper extends Fragment implements
+public class GoogleApiHelper extends Fragment implements
 		ConnectionCallbacks, OnConnectionFailedListener {
 
 	// ===========================================================
 	// Constants
 	// ===========================================================
-	private final String LOG_TAG = "PlayGameServiceHelper";
+	private final String LOG_TAG = "GoogleApiHelper";
 
 	/* shared preference keys */
 	private final String KEY_WAS_SIGNINED = "WasSignIned";
