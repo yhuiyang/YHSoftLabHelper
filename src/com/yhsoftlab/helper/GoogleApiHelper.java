@@ -23,13 +23,12 @@ import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.common.api.GoogleApiClient.ConnectionCallbacks;
-import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener;
 import com.google.android.gms.games.Games;
 import com.google.android.gms.games.GamesActivityResultCodes;
 
 public class GoogleApiHelper extends Fragment implements
-		ConnectionCallbacks, OnConnectionFailedListener {
+		GoogleApiClient.ConnectionCallbacks,
+		GoogleApiClient.OnConnectionFailedListener {
 
 	// ===========================================================
 	// Constants
@@ -40,14 +39,14 @@ public class GoogleApiHelper extends Fragment implements
 	private final String KEY_WAS_SIGNINED = "WasSignIned";
 
 	/* argument keys */
-	public final static String KEY_ARG_RESOLVE_REQUEST_CODE = "ResolveRequestCode";
+	public final static String KEY_ARG_REQCODE_RESOLVE_SIGNIN = "ResolveSignIn";
 	public final static String KEY_ARG_LISTENER_IMPL = "ListenerImpl";
 
 	/* argument values */
 	public final static int VAL_ARG_yy = 1;
 
 	/* request codes */
-	private final int REQ_RESOLVE_ERROR_DEFAULT = 10001;
+	private final int REQCODE_RESOLVE_SIGNIN_DEFAULT = 10001;
 
 	// ===========================================================
 	// Fields
@@ -56,7 +55,7 @@ public class GoogleApiHelper extends Fragment implements
 	private IListener mListener = null;
 	private boolean mWasSignIned;
 	/* Allow activity overwrite this value to avoid conflict. */
-	private int mResolveErrorRequestCode = REQ_RESOLVE_ERROR_DEFAULT;
+	private int mRCResolveSignIn = REQCODE_RESOLVE_SIGNIN_DEFAULT;
 
 	// ===========================================================
 	// Constructors
@@ -80,7 +79,7 @@ public class GoogleApiHelper extends Fragment implements
 						"Connection failed, but with resolution, try it...");
 				try {
 					result.startResolutionForResult(getActivity(),
-							mResolveErrorRequestCode);
+							mRCResolveSignIn);
 				} catch (SendIntentException e) {
 					e.printStackTrace();
 				}
@@ -111,7 +110,7 @@ public class GoogleApiHelper extends Fragment implements
 	public void onActivityResult(int requestCode, int resultCode, Intent data) {
 		LogTraceEnter("onActivityResult: " + requestCode + "," + resultCode);
 
-		if (requestCode == mResolveErrorRequestCode && mApiClient != null) {
+		if (requestCode == mRCResolveSignIn && mApiClient != null) {
 
 			/*
 			 * we're return from an activity that was launched to resolve
@@ -200,9 +199,8 @@ public class GoogleApiHelper extends Fragment implements
 		/* retrieve those values passed by activity in runtime */
 		Bundle args = this.getArguments();
 		if (args != null) {
-			if (args.containsKey(KEY_ARG_RESOLVE_REQUEST_CODE))
-				mResolveErrorRequestCode = args
-						.getInt(KEY_ARG_RESOLVE_REQUEST_CODE);
+			if (args.containsKey(KEY_ARG_REQCODE_RESOLVE_SIGNIN))
+				mRCResolveSignIn = args.getInt(KEY_ARG_REQCODE_RESOLVE_SIGNIN);
 		}
 
 		/* setup api client builder */
