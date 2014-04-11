@@ -7,7 +7,6 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender.SendIntentException;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.content.res.Resources;
@@ -35,12 +34,10 @@ public class GoogleApiHelper extends Fragment implements
 	// ===========================================================
 	private final String LOG_TAG = "GoogleApiHelper";
 
-	/* shared preference keys */
-	private final String KEY_WAS_SIGNINED = "WasSignIned";
-
 	/* argument keys */
 	public final static String KEY_ARG_REQCODE_RESOLVE_SIGNIN = "ResolveSignIn";
 	public final static String KEY_ARG_LISTENER_IMPL = "ListenerImpl";
+	public final static String KEY_ARG_AUTO_SIGNIN = "AutoSignIn";
 
 	/* argument values */
 	public final static int VAL_ARG_yy = 1;
@@ -53,9 +50,27 @@ public class GoogleApiHelper extends Fragment implements
 	// ===========================================================
 	private GoogleApiClient mApiClient = null;
 	private IListener mListener = null;
-	private boolean mWasSignIned;
 	/* Allow activity overwrite this value to avoid conflict. */
 	private int mRCResolveSignIn = REQCODE_RESOLVE_SIGNIN_DEFAULT;
+	/**
+	 * Initially, this value is setup by activity via
+	 * {@link android.support.v4.app.Fragment#setArguments(Bundle)
+	 * setArguments(Bundle)}. After user initiate sign in flow completed and
+	 * succeed, this will be updated to true. After user requests to sign out,
+	 * this will be updated to false too.
+	 */
+	private boolean mAutoSignIn = false;
+	private boolean mDuringUserInitiateSignInFlow = false;
+	/**
+	 * Set when start GoogleApiClient.connect(), and clear when connected or
+	 * connection fail is resolved or not resolved.
+	 */
+	private boolean mConnecting = false;
+	/**
+	 * true during we're waiting result from activity that provide resolution.
+	 * otherwise false.
+	 */
+	private boolean mWaitingActivityResult = false;
 
 	// ===========================================================
 	// Constructors
@@ -66,30 +81,20 @@ public class GoogleApiHelper extends Fragment implements
 	// ===========================================================
 	@Override
 	public void onConnectionFailed(ConnectionResult result) {
-		Log.i(LOG_TAG, "Failed to connect to play game service: "
-				+ errorCodeToString(result.getErrorCode()) + ". Resolvable: "
-				+ result.hasResolution());
+		Log.i(LOG_TAG, "onConnectionFailed[" + result.hasResolution()
+				+ "]. Detail: " + result.toString());
 
-		if (result.hasResolution()) {
+		boolean tryToResolve = false;
 
-			switch (result.getErrorCode()) {
-			case ConnectionResult.SIGN_IN_REQUIRED:
-			case ConnectionResult.RESOLUTION_REQUIRED:
-				Log.w(LOG_TAG,
-						"Connection failed, but with resolution, try it...");
-				try {
-					result.startResolutionForResult(getActivity(),
-							mRCResolveSignIn);
-				} catch (SendIntentException e) {
-					e.printStackTrace();
-				}
-				break;
-			default:
-				break;
-			}
+		if (mDuringUserInitiateSignInFlow) {
+			Log.v(LOG_TAG, "Helper will try to resolve this failure.");
+			tryToResolve = resolveConnectionResult(result);
 		} else {
-			if (mApiClient != null && mApiClient.isConnected())
-				mApiClient.disconnect();
+			Log.v(LOG_TAG, "Helper wont resolve failure by auto sign-in.");
+		}
+
+		if (!tryToResolve) {
+			setHelperDisconnected();
 			notifySignInFailed();
 		}
 	}
@@ -97,6 +102,9 @@ public class GoogleApiHelper extends Fragment implements
 	@Override
 	public void onConnected(Bundle connectionHint) {
 		Log.i(LOG_TAG, "onConnected");
+
+		setHelperConnected();
+
 		if (mListener != null)
 			mListener.onSignInSuccessed();
 	}
@@ -106,27 +114,40 @@ public class GoogleApiHelper extends Fragment implements
 		Log.i(LOG_TAG, "onConnectionSuspended");
 	}
 
+	/*
+	 * we're return from an activity that was launched to resolve connection
+	 * problem.
+	 */
 	@Override
 	public void onActivityResult(int requestCode, int resultCode, Intent data) {
 		LogTraceEnter("onActivityResult: " + requestCode + "," + resultCode);
 
-		if (requestCode == mRCResolveSignIn && mApiClient != null) {
+		if (requestCode != mRCResolveSignIn) {
+			Log.w(LOG_TAG, "Request code is not interested, skip...");
+			return;
+		}
 
-			/*
-			 * we're return from an activity that was launched to resolve
-			 * connection problem.
-			 */
+		if (!mConnecting) {
+			Log.w(LOG_TAG,
+					"Helper is not connecting, check why we receive result?");
+			return;
+		}
+
+		mWaitingActivityResult = false; /* mark result is arrived */
+		mConnecting = false; /* connection completed */
+
+		if (mApiClient != null) {
 
 			switch (resultCode) {
 			case Activity.RESULT_OK:
-				/* problem solved, connect again */
-				if (mApiClient.isConnecting())
-					mApiClient.connect();
+				Log.v(LOG_TAG, "Resolved, re-connect again...");
+				helperConnectToService(mDuringUserInitiateSignInFlow);
 				break;
 			case Activity.RESULT_CANCELED:
-				/* user cancel resolution activity, problem is not resolved */
+				Log.v(LOG_TAG, "Resolution canceled.");
 				break;
 			case GamesActivityResultCodes.RESULT_RECONNECT_REQUIRED:
+				Log.v(LOG_TAG, "Reconnect required");
 				mApiClient.reconnect();
 				break;
 			case GamesActivityResultCodes.RESULT_APP_MISCONFIGURED:
@@ -146,6 +167,8 @@ public class GoogleApiHelper extends Fragment implements
 						.show();
 				break;
 			}
+		} else {
+			Log.w(LOG_TAG, "mApiClient is null, check why?");
 		}
 
 		LogTraceLeave("onActivityResult");
@@ -191,16 +214,12 @@ public class GoogleApiHelper extends Fragment implements
 
 		setRetainInstance(true);
 
-		/* retrieve those values saved in activity shared preferences */
-		SharedPreferences pref = getActivity().getSharedPreferences(LOG_TAG,
-				Context.MODE_PRIVATE);
-		mWasSignIned = pref.getBoolean(KEY_WAS_SIGNINED, false);
-
 		/* retrieve those values passed by activity in runtime */
 		Bundle args = this.getArguments();
 		if (args != null) {
 			if (args.containsKey(KEY_ARG_REQCODE_RESOLVE_SIGNIN))
 				mRCResolveSignIn = args.getInt(KEY_ARG_REQCODE_RESOLVE_SIGNIN);
+			mAutoSignIn = args.getBoolean(KEY_ARG_AUTO_SIGNIN);
 		}
 
 		/* setup api client builder */
@@ -242,11 +261,9 @@ public class GoogleApiHelper extends Fragment implements
 		LogTraceEnter("onStart");
 		super.onStart();
 
-		if (mWasSignIned) {
-			if (mApiClient != null && !mApiClient.isConnected()
-					&& !mApiClient.isConnecting()) {
-				mApiClient.connect();
-			}
+		if (mAutoSignIn) {
+			Log.d(LOG_TAG, "auto sign-in...");
+			helperConnectToService(false);
 		}
 
 		LogTraceLeave("onStart");
@@ -277,10 +294,7 @@ public class GoogleApiHelper extends Fragment implements
 	public void onStop() {
 		LogTraceEnter("onStop");
 		super.onStop();
-		if (mApiClient != null && mApiClient.isConnected()) {
-			Log.v(LOG_TAG, "Disconnect from play game service");
-			mApiClient.disconnect();
-		}
+		helperDisconnectFromService();
 		LogTraceLeave("onStop");
 	}
 
@@ -310,19 +324,127 @@ public class GoogleApiHelper extends Fragment implements
 	// ===========================================================
 	public void beginUserInitiatedSignIn() {
 
-		if (mApiClient != null && mApiClient.isConnected()) {
+		if (isHelperConnected()) {
+			Log.w(LOG_TAG, "User requests sign in, but client is connected.");
+			/* check why user sign in again when we already connected. */
 			notifySignInSuccess();
 			return;
 		}
 
-		if (mApiClient != null && mApiClient.isConnecting()) {
+		if (isHelperConnecting()) {
+			Log.w(LOG_TAG, "User requests sign in, but client is connecting.");
 			/* wait previous connection response and ignore this one */
 			return;
 		}
 
+		helperConnectToService(true);
+	}
+
+	/**
+	 * Attempts to resolve a connection failure. This will usually involve
+	 * starting a UI flow that lets the user give the appropriate consents
+	 * necessary for sign-in to work.
+	 * 
+	 * @param pConnectionResult
+	 *            The ConnectionResult that we're trying to resolve.
+	 * @return True if resolvable (and later helper listener callback methods
+	 *         should be invoked); False if not resolvable.
+	 */
+	private boolean resolveConnectionResult(
+			final ConnectionResult pConnectionResult) {
+
+		if (mWaitingActivityResult) {
+			Log.w(LOG_TAG, "Help is still waiting for result "
+					+ "from previous resolution. "
+					+ "Will not to resolve another connection failure now");
+			return false;
+		}
+
+		Log.d(LOG_TAG, "Try to resolveConnectionResult: " + pConnectionResult);
+		boolean hasResolution = pConnectionResult.hasResolution();
+		if (hasResolution) {
+			Log.d(LOG_TAG, "Has resolution, starting it...");
+
+			mWaitingActivityResult = true;
+			try {
+				pConnectionResult.startResolutionForResult(getActivity(),
+						mRCResolveSignIn);
+			} catch (SendIntentException e) {
+				e.printStackTrace();
+				mWaitingActivityResult = false;
+				/* retry, need to make sure this won't fall in infinite loop */
+				helperConnectToService(mDuringUserInitiateSignInFlow);
+			}
+
+		} else {
+			Log.d(LOG_TAG, "No resolution. Abort!");
+			/* do something */
+
+		}
+
+		return hasResolution;
+	}
+
+	/**
+	 * Wrap api client to send connect request.
+	 * 
+	 * @param pUserInitiateSignIn
+	 *            true when this connect request is initiated by user; false
+	 *            when this connection request is initiated by auto sign in.
+	 */
+	private void helperConnectToService(final boolean pUserInitiateSignIn) {
 		if (mApiClient != null) {
+
+			if (isHelperConnected()) {
+				Log.w(LOG_TAG, "Client had connected, skip connect again.");
+				return;
+			} else if (isHelperConnecting()) {
+				Log.w(LOG_TAG,
+						"Client and/or Helper is connecting, skip connect request");
+				return;
+			}
+
+			Log.d(LOG_TAG, "Helper is connecting to service...");
+			mConnecting = true;
+			mDuringUserInitiateSignInFlow = pUserInitiateSignIn;
 			mApiClient.connect();
 		}
+	}
+
+	private void helperDisconnectFromService() {
+		if (mApiClient != null) {
+			if (isHelperConnected() || isHelperConnecting()) {
+				Log.i(LOG_TAG, "Helper is diconnecting from service.");
+				mApiClient.disconnect();
+			} else
+				Log.w(LOG_TAG, "Request helper to disconnect from service. "
+						+ "But helper didn't connect to service.");
+		}
+	}
+
+	private boolean isHelperConnected() {
+		return mApiClient != null && mApiClient.isConnected();
+	}
+
+	private boolean isHelperConnecting() {
+		boolean clientConnecting = (mApiClient != null && mApiClient
+				.isConnecting());
+		if (clientConnecting != mConnecting)
+			Log.v(LOG_TAG, "Connecting state mismatch: Client["
+					+ clientConnecting + "], Helper[" + mConnecting + "]");
+		return clientConnecting || mConnecting;
+	}
+
+	private void setHelperConnected() {
+		mConnecting = false;
+		if (mDuringUserInitiateSignInFlow) {
+			mDuringUserInitiateSignInFlow = false;
+			mAutoSignIn = true;
+		}
+	}
+
+	private void setHelperDisconnected() {
+		mConnecting = false;
 	}
 
 	private void notifySignInSuccess() {
