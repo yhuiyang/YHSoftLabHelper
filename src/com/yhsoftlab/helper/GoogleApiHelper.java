@@ -104,9 +104,7 @@ public class GoogleApiHelper extends Fragment implements
 		Log.i(LOG_TAG, "onConnected");
 
 		setHelperConnected();
-
-		if (mListener != null)
-			mListener.onSignInSuccessed();
+		notifySignInSuccess();
 	}
 
 	@Override
@@ -449,7 +447,7 @@ public class GoogleApiHelper extends Fragment implements
 
 	private void notifySignInSuccess() {
 		if (mListener != null)
-			mListener.onSignInSuccessed();
+			mListener.onSignInSucceed(mApiClient);
 	}
 
 	private void notifySignInFailed() {
@@ -555,7 +553,7 @@ public class GoogleApiHelper extends Fragment implements
 	// Inner and Anonymous Classes
 	// ===========================================================
 	public interface IListener {
-		void onSignInSuccessed();
+		void onSignInSucceed(final GoogleApiClient pApiClient);
 
 		void onSignInFailed();
 	}
