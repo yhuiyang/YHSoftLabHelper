@@ -24,6 +24,7 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.games.Games;
 import com.google.android.gms.games.GamesActivityResultCodes;
+import com.google.android.gms.plus.Plus;
 
 public class GoogleApiHelper extends Fragment implements
 		GoogleApiClient.ConnectionCallbacks,
@@ -225,6 +226,8 @@ public class GoogleApiHelper extends Fragment implements
 				getActivity(), this, this);
 		builder.addApi(Games.API);
 		builder.addScope(Games.SCOPE_GAMES);
+		builder.addApi(Plus.API);
+		builder.addScope(Plus.SCOPE_PLUS_PROFILE);
 		mApiClient = builder.build();
 
 		LogTraceLeave("onCreate");
