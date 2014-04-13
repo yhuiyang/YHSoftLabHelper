@@ -470,39 +470,6 @@ public class GoogleApiHelper extends Fragment implements
 		}
 	}
 
-	private String errorCodeToString(int errorCode) {
-		switch (errorCode) {
-		case ConnectionResult.SUCCESS:
-			return "SUCCESS(" + errorCode + ")";
-		case ConnectionResult.SERVICE_MISSING:
-			return "SERVICE_MISSING(" + errorCode + ")";
-		case ConnectionResult.SERVICE_VERSION_UPDATE_REQUIRED:
-			return "SERVICE_VERSION_UPDATE_REQUIRED(" + errorCode + ")";
-		case ConnectionResult.SERVICE_DISABLED:
-			return "SERVICE_DISABLED(" + errorCode + ")";
-		case ConnectionResult.SIGN_IN_REQUIRED:
-			return "SIGN_IN_REQUIRED(" + errorCode + ")";
-		case ConnectionResult.INVALID_ACCOUNT:
-			return "INVALID_ACCOUNT(" + errorCode + ")";
-		case ConnectionResult.RESOLUTION_REQUIRED:
-			return "RESOLUTION_REQUIRED(" + errorCode + ")";
-		case ConnectionResult.NETWORK_ERROR:
-			return "NETWORK_ERROR(" + errorCode + ")";
-		case ConnectionResult.INTERNAL_ERROR:
-			return "INTERNAL_ERROR(" + errorCode + ")";
-		case ConnectionResult.SERVICE_INVALID:
-			return "SERVICE_INVALID(" + errorCode + ")";
-		case ConnectionResult.DEVELOPER_ERROR:
-			return "DEVELOPER_ERROR(" + errorCode + ")";
-		case ConnectionResult.LICENSE_CHECK_FAILED:
-			return "LICENSE_CHECK_FAILED(" + errorCode + ")";
-		case ConnectionResult.DATE_INVALID:
-			return "DATE_INVALID(" + errorCode + ")";
-		default:
-			return "Unknown error code " + errorCode;
-		}
-	}
-
 	private String getSHA1CertFingerprint(Context ctx) {
 		try {
 			Signature[] sigs = ctx.getPackageManager().getPackageInfo(
