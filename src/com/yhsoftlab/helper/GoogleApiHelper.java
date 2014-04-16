@@ -21,6 +21,7 @@ import android.view.ViewGroup;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GooglePlayServicesClient;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.games.Games;
 import com.google.android.gms.games.GamesActivityResultCodes;
@@ -102,7 +103,7 @@ public class GoogleApiHelper extends Fragment implements
 
 	@Override
 	public void onConnected(Bundle connectionHint) {
-		Log.i(LOG_TAG, "onConnected");
+		Log.i(LOG_TAG, "onConnected: " + connectionHint);
 
 		setHelperConnected();
 		notifySignInSuccess();
@@ -110,7 +111,7 @@ public class GoogleApiHelper extends Fragment implements
 
 	@Override
 	public void onConnectionSuspended(int cause) {
-		Log.i(LOG_TAG, "onConnectionSuspended");
+		Log.i(LOG_TAG, "onConnectionSuspended: " + cause);
 	}
 
 	/*
@@ -295,7 +296,7 @@ public class GoogleApiHelper extends Fragment implements
 	public void onStop() {
 		LogTraceEnter("onStop");
 		super.onStop();
-		helperDisconnectFromService();
+		helperDisconnectFromService(false);
 		LogTraceLeave("onStop");
 	}
 
@@ -339,6 +340,11 @@ public class GoogleApiHelper extends Fragment implements
 		}
 
 		helperConnectToService(true);
+	}
+
+	public void signOut() {
+
+		helperDisconnectFromService(true);
 	}
 
 	/**
@@ -412,10 +418,16 @@ public class GoogleApiHelper extends Fragment implements
 		}
 	}
 
-	private void helperDisconnectFromService() {
+	private void helperDisconnectFromService(final boolean pUserSignOut) {
 		if (mApiClient != null) {
 			if (isHelperConnected() || isHelperConnecting()) {
 				Log.i(LOG_TAG, "Helper is diconnecting from service.");
+
+				if (pUserSignOut) {
+					Plus.AccountApi.clearDefaultAccount(mApiClient);
+					Games.signOut(mApiClient);
+				}
+
 				mApiClient.disconnect();
 			} else
 				Log.w(LOG_TAG, "Request helper to disconnect from service. "
