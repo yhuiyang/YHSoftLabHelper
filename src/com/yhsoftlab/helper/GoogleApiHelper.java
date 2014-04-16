@@ -97,7 +97,7 @@ public class GoogleApiHelper extends Fragment implements
 
 		if (!tryToResolve) {
 			setHelperDisconnected();
-			notifySignInFailed();
+			notifyHelperListener(Boolean.FALSE);
 		}
 	}
 
@@ -106,7 +106,7 @@ public class GoogleApiHelper extends Fragment implements
 		Log.i(LOG_TAG, "onConnected: " + connectionHint);
 
 		setHelperConnected();
-		notifySignInSuccess();
+		notifyHelperListener(Boolean.TRUE);
 	}
 
 	@Override
@@ -145,6 +145,7 @@ public class GoogleApiHelper extends Fragment implements
 				break;
 			case Activity.RESULT_CANCELED:
 				Log.v(LOG_TAG, "Resolution canceled.");
+				notifyHelperListener(null);
 				break;
 			case GamesActivityResultCodes.RESULT_RECONNECT_REQUIRED:
 				Log.v(LOG_TAG, "Reconnect required");
@@ -329,7 +330,7 @@ public class GoogleApiHelper extends Fragment implements
 		if (isHelperConnected()) {
 			Log.w(LOG_TAG, "User requests sign in, but client is connected.");
 			/* check why user sign in again when we already connected. */
-			notifySignInSuccess();
+			notifyHelperListener(Boolean.TRUE);
 			return;
 		}
 
@@ -460,13 +461,21 @@ public class GoogleApiHelper extends Fragment implements
 		mConnecting = false;
 	}
 
-	private void notifySignInSuccess() {
-		if (mListener != null)
+	/**
+	 * Notify listener the sign in result
+	 * 
+	 * @param success
+	 *            True - sign-in result is succeed. False - Sign-in result is
+	 *            failed. null - Sign-in is cancelled.
+	 */
+	private void notifyHelperListener(Boolean success) {
+		if (mListener == null)
+			return;
+		if (success == null)
+			mListener.onSignInCanceled();
+		else if (success == Boolean.TRUE)
 			mListener.onSignInSucceed(mApiClient);
-	}
-
-	private void notifySignInFailed() {
-		if (mListener != null)
+		else if (success == Boolean.FALSE)
 			mListener.onSignInFailed();
 	}
 
@@ -538,6 +547,8 @@ public class GoogleApiHelper extends Fragment implements
 		void onSignInSucceed(final GoogleApiClient pApiClient);
 
 		void onSignInFailed();
+
+		void onSignInCanceled();
 	}
 
 	public static abstract class CListener implements Parcelable, IListener {
