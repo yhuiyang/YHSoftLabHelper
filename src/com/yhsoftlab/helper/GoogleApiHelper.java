@@ -168,6 +168,7 @@ public class GoogleApiHelper extends Fragment implements
 						"Connection problem[" + resultCode
 								+ "] can not be resolve", Toast.LENGTH_LONG)
 						.show();
+				notifyHelperListener(false);
 				break;
 			}
 		} else {
@@ -498,8 +499,9 @@ public class GoogleApiHelper extends Fragment implements
 	 * Notify listener the sign in result
 	 * 
 	 * @param success
-	 *            True - sign-in result is succeed. False - Sign-in result is
-	 *            failed. null - Sign-in is cancelled.
+	 *            True - sign-in result is succeed.<br>
+	 *            False - Sign-in result is failed.<br>
+	 *            null - Sign-in is cancelled.
 	 */
 	private void notifyHelperListener(Boolean success) {
 		if (mListener == null)
