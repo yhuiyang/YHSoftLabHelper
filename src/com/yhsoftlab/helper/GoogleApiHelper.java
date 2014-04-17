@@ -163,6 +163,7 @@ public class GoogleApiHelper extends Fragment implements
 						+ getAppIdFromResource(getActivity()));
 				break;
 			default:
+				// TODO: make description clear */
 				Toast.makeText(
 						getActivity(),
 						"Connection problem[" + resultCode
