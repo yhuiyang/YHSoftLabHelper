@@ -21,7 +21,6 @@ import android.view.ViewGroup;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GooglePlayServicesClient;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.games.Games;
 import com.google.android.gms.games.GamesActivityResultCodes;
@@ -38,6 +37,7 @@ public class GoogleApiHelper extends Fragment implements
 
 	/* argument keys */
 	public final static String KEY_ARG_REQCODE_RESOLVE_SIGNIN = "ResolveSignIn";
+	public final static String KEY_ARG_REQCODE_SHOW_LEADERBOARD = "ShowLeaderboard";
 	public final static String KEY_ARG_LISTENER_IMPL = "ListenerImpl";
 	public final static String KEY_ARG_AUTO_SIGNIN = "AutoSignIn";
 
@@ -46,6 +46,7 @@ public class GoogleApiHelper extends Fragment implements
 
 	/* request codes */
 	private final int REQCODE_RESOLVE_SIGNIN_DEFAULT = 10001;
+	private final int REQCODE_SHOW_LEADBOARD = 10002;
 
 	// ===========================================================
 	// Fields
@@ -54,6 +55,7 @@ public class GoogleApiHelper extends Fragment implements
 	private IListener mListener = null;
 	/* Allow activity overwrite this value to avoid conflict. */
 	private int mRCResolveSignIn = REQCODE_RESOLVE_SIGNIN_DEFAULT;
+	private int mRCShowLeaderboard = REQCODE_SHOW_LEADBOARD;
 	/**
 	 * Initially, this value is setup by activity via
 	 * {@link android.support.v4.app.Fragment#setArguments(Bundle)
@@ -346,6 +348,37 @@ public class GoogleApiHelper extends Fragment implements
 	public void signOut() {
 
 		helperDisconnectFromService(true);
+	}
+
+	public boolean requestShowAllLeaderboards() {
+
+		boolean result = false;
+
+		if (isHelperConnected()) {
+			/*
+			 * this request code is actually no use, put anything other than -1
+			 * should be ok.
+			 */
+			startActivityForResult(
+					Games.Leaderboards.getAllLeaderboardsIntent(mApiClient),
+					mRCShowLeaderboard);
+			result = true;
+		}
+
+		return result;
+	}
+
+	public boolean requestShowLeaderboard(final String pLeaderboardId) {
+
+		boolean result = false;
+
+		if (isHelperConnected()) {
+			startActivityForResult(Games.Leaderboards.getLeaderboardIntent(
+					mApiClient, pLeaderboardId), mRCShowLeaderboard);
+			result = true;
+		}
+
+		return result;
 	}
 
 	/**
