@@ -20,6 +20,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import com.google.android.gms.appstate.AppStateManager;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.games.Games;
@@ -234,6 +235,8 @@ public class GoogleApiHelper extends Fragment implements
 		builder.addScope(Games.SCOPE_GAMES);
 		builder.addApi(Plus.API);
 		builder.addScope(Plus.SCOPE_PLUS_PROFILE);
+		builder.addApi(AppStateManager.API);
+		builder.addScope(AppStateManager.SCOPE_APP_STATE);
 		mApiClient = builder.build();
 
 		LogTraceLeave("onCreate");
@@ -462,6 +465,7 @@ public class GoogleApiHelper extends Fragment implements
 				if (pUserSignOut) {
 					Plus.AccountApi.clearDefaultAccount(mApiClient);
 					Games.signOut(mApiClient);
+					AppStateManager.signOut(mApiClient);
 				}
 
 				mApiClient.disconnect();
