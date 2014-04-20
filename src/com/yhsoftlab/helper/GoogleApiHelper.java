@@ -21,8 +21,11 @@ import android.view.ViewGroup;
 import android.widget.Toast;
 
 import com.google.android.gms.appstate.AppStateManager;
+import com.google.android.gms.appstate.AppStateManager.StateResult;
+import com.google.android.gms.appstate.AppStateStatusCodes;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.games.Games;
 import com.google.android.gms.games.GamesActivityResultCodes;
 import com.google.android.gms.plus.Plus;
@@ -76,6 +79,92 @@ public class GoogleApiHelper extends Fragment implements
 	 * otherwise false.
 	 */
 	private boolean mWaitingActivityResult = false;
+
+	private ResultCallback<AppStateManager.StateResult> mStateResult = new ResultCallback<AppStateManager.StateResult>() {
+
+		@Override
+		public void onResult(StateResult result) {
+			AppStateManager.StateLoadedResult loadedResult = result
+					.getLoadedResult();
+			AppStateManager.StateConflictResult conflictResult = result
+					.getConflictResult();
+			if (loadedResult != null) {
+				int statusCode = loadedResult.getStatus().getStatusCode();
+				switch (statusCode) {
+				case AppStateStatusCodes.STATUS_OK:
+					if (mListener != null)
+						mListener.onCloudSaveDataLoaded(
+								loadedResult.getStateKey(),
+								loadedResult.getLocalData());
+					break;
+				case AppStateStatusCodes.STATUS_STATE_KEY_NOT_FOUND:
+					Log.e(LOG_TAG, "The requested state key was not found.");
+					if (mListener != null)
+						mListener.onCloudSaveDataNotFound(loadedResult
+								.getStateKey());
+					break;
+				case AppStateStatusCodes.STATUS_STATE_KEY_LIMIT_EXCEEDED:
+					/* should not happened in our implementation */
+					Log.e(LOG_TAG,
+							"The application already has data in the maximum number of keys (data slots) and is attempting to create a new one.");
+					break;
+				case AppStateStatusCodes.STATUS_CLIENT_RECONNECT_REQUIRED:
+					Log.e(LOG_TAG,
+							"The GoogleApiClient is in an inconsistent state and must reconnect to the service to resolve the issue.");
+					helperConnectToService(false);
+					break;
+				case AppStateStatusCodes.STATUS_INTERNAL_ERROR:
+					Log.e(LOG_TAG,
+							"An unspecified error occurred; no more specific information is available.");
+					break;
+				case AppStateStatusCodes.STATUS_NETWORK_ERROR_STALE_DATA:
+					Log.e(LOG_TAG,
+							"A network error occurred while attempting to retrieve fresh data, but some locally cached data was available.");
+					break;
+				case AppStateStatusCodes.STATUS_NETWORK_ERROR_NO_DATA:
+					Log.e(LOG_TAG,
+							"A network error occurred while attempting to retrieve fresh data, and no data was available locally.");
+					break;
+				case AppStateStatusCodes.STATUS_NETWORK_ERROR_OPERATION_DEFERRED:
+					Log.e(LOG_TAG,
+							"A network error occurred while attempting to modify data, but the data was successfully modified locally and will be updated on the network the next time the device is able to sync.");
+					break;
+				case AppStateStatusCodes.STATUS_NETWORK_ERROR_OPERATION_FAILED:
+					Log.e(LOG_TAG,
+							"A network error occurred while attempting to perform an operation that requires network access.");
+					break;
+				case AppStateStatusCodes.STATUS_DEVELOPER_ERROR:
+					Log.e(LOG_TAG,
+							"Your application is incorrectly configured.");
+					break;
+				case AppStateStatusCodes.STATUS_INTERRUPTED:
+					Log.e(LOG_TAG,
+							"Was interrupted while waiting for the result.");
+					break;
+				case AppStateStatusCodes.STATUS_TIMEOUT:
+					Log.e(LOG_TAG,
+							"The operation timed out while awaiting the result.");
+					break;
+				case AppStateStatusCodes.STATUS_WRITE_OUT_OF_DATE_VERSION:
+					Log.e(LOG_TAG, "A version conflict was detected.");
+					break;
+				case AppStateStatusCodes.STATUS_WRITE_SIZE_EXCEEDED:
+					Log.e(LOG_TAG,
+							"A write request was submitted which contained too much data for the server.");
+					break;
+				default:
+					break;
+				}
+			} else if (conflictResult != null) {
+				if (mListener != null)
+					mListener.onCloudSaveDataConflicted(
+							conflictResult.getStateKey(),
+							conflictResult.getResolvedVersion(),
+							conflictResult.getServerData(),
+							conflictResult.getLocalData());
+			}
+		}
+	};
 
 	// ===========================================================
 	// Constructors
@@ -386,6 +475,63 @@ public class GoogleApiHelper extends Fragment implements
 		return result;
 	}
 
+	public boolean saveToCloud(int stateKey, byte[] data) {
+		return saveToCloud(true, stateKey, data);
+	}
+
+	public boolean saveToCloud(boolean async, int stateKey, byte[] data) {
+		boolean result = false;
+
+		if (isHelperConnected()) {
+			if (stateKey >= 0
+					&& stateKey < AppStateManager.getMaxNumKeys(mApiClient)
+					&& data.length <= AppStateManager
+							.getMaxStateSize(mApiClient)) {
+				if (async)
+					AppStateManager.update(mApiClient, stateKey, data);
+				else
+					AppStateManager.updateImmediate(mApiClient, stateKey, data);
+			}
+		}
+		return result;
+	}
+
+	/**
+	 * Load data from cloud save. The data will be loaded asynchronously, and
+	 * the result will return back to caller through listener interface methods.
+	 * 
+	 * @param stateKey
+	 */
+	public boolean loadFromCloud(int stateKey) {
+
+		boolean handled = false;
+
+		if (isHelperConnected()) {
+			if (stateKey >= 0
+					&& stateKey < AppStateManager.getMaxNumKeys(mApiClient)) {
+				AppStateManager.load(mApiClient, stateKey).setResultCallback(
+						mStateResult);
+				handled = true;
+			}
+		}
+
+		return handled;
+	}
+
+	/**
+	 * Application needs to call this function to mark conflict is resolved
+	 * after onCloudSaveDataConflict is invoked.
+	 * 
+	 * @param stateKey
+	 * @param resolvedVersion
+	 * @param resolvedData
+	 */
+	public void conflictResolvedInCloudSave(int stateKey,
+			String resolvedVersion, byte[] resolvedData) {
+		AppStateManager.resolve(mApiClient, stateKey, resolvedVersion,
+				resolvedData).setResultCallback(mStateResult);
+	}
+
 	/**
 	 * Attempts to resolve a connection failure. This will usually involve
 	 * starting a UI flow that lets the user give the appropriate consents
@@ -442,7 +588,8 @@ public class GoogleApiHelper extends Fragment implements
 		if (mApiClient != null) {
 
 			if (isHelperConnected()) {
-				Log.w(LOG_TAG, "Client had connected, skip connect again.");
+				Log.w(LOG_TAG, "Client had connected, reconnecting client.");
+				mApiClient.reconnect();
 				return;
 			} else if (isHelperConnecting()) {
 				Log.w(LOG_TAG,
@@ -584,11 +731,20 @@ public class GoogleApiHelper extends Fragment implements
 	// Inner and Anonymous Classes
 	// ===========================================================
 	public interface IListener {
+		/* Sign-in results */
 		void onSignInSucceed(final GoogleApiClient pApiClient);
 
 		void onSignInFailed();
 
 		void onSignInCanceled();
+
+		/* Cloud save data load result */
+		void onCloudSaveDataLoaded(int stateKey, byte[] pLocalData);
+
+		void onCloudSaveDataNotFound(int stateKey);
+
+		void onCloudSaveDataConflicted(int stateKey, String resolvedVersion,
+				byte[] pServerData, byte[] pLocalData);
 	}
 
 	public static abstract class CListener implements Parcelable, IListener {
