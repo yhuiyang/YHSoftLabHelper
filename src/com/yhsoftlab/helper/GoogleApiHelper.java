@@ -518,6 +518,13 @@ public class GoogleApiHelper extends Fragment implements
 				resolvedData).setResultCallback(mLoadResult);
 	}
 
+	public void submitScore(String pLeaderboardId, long pRawScore) {
+		if (isHelperConnected()) {
+			Games.Leaderboards.submitScore(mApiClient, pLeaderboardId,
+					pRawScore);
+		}
+	}
+
 	/**
 	 * Attempts to resolve a connection failure. This will usually involve
 	 * starting a UI flow that lets the user give the appropriate consents
