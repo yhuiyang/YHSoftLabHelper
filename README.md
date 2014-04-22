@@ -17,14 +17,12 @@ Usage:
         
         private final GoogleApiHelper.CListener mHelperListener = new GoogleApiHelper.CListener() {
             @Override
-		    public void onSignInSucceed(final GoogleApiClient pClient) {
-		    }
-		    
-		    @Override
-		    public void onSignInFailed() {
-		    }
-		    
-		    /* ... you need to implement all the interface methods here ... */
+            public void onSignInSucceed(final GoogleApiClient pClient) {
+            }
+            @Override
+            public void onSignInFailed() {
+            }
+            /* ... you need to implement all the interface methods here ... */
         };
         
         @Override
@@ -37,8 +35,8 @@ Usage:
             if (mHelper == null) {
                 Bundle args = new Bundle();
                 args.putInt(GoogleApiHelper.KEY_ARG_REQCODE_RESOLVE_SIGNIN, RC_RESOLVE_SIGNIN);
-			          args.putParcelable(GoogleApiHelper.KEY_ARG_LISTENER_IMPL, mHelperListener);
-			          /* add other helper parameters here. ex: client flags */
+                args.putParcelable(GoogleApiHelper.KEY_ARG_LISTENER_IMPL, mHelperListener);
+                /* add other helper parameters here. ex: client flags */
                 mHelper = (GoogleApiHelper) Fragment.instantiate(this, GoogleApiHelper.class.getName(), args);
                 getSupportFragmentManager().beginTransaction().add(mGoogleApiHelper, TAG_GOOGLE_API_HELPER).commit();
             }
