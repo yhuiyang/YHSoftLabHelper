@@ -80,7 +80,7 @@ public class GoogleApiHelper extends Fragment implements
 	 */
 	private boolean mWaitingActivityResult = false;
 
-	private ResultCallback<AppStateManager.StateResult> mStateResult = new ResultCallback<AppStateManager.StateResult>() {
+	private ResultCallback<AppStateManager.StateResult> mLoadResult = new ResultCallback<AppStateManager.StateResult>() {
 
 		@Override
 		public void onResult(StateResult result) {
@@ -125,14 +125,6 @@ public class GoogleApiHelper extends Fragment implements
 					Log.e(LOG_TAG,
 							"A network error occurred while attempting to retrieve fresh data, and no data was available locally.");
 					break;
-				case AppStateStatusCodes.STATUS_NETWORK_ERROR_OPERATION_DEFERRED:
-					Log.e(LOG_TAG,
-							"A network error occurred while attempting to modify data, but the data was successfully modified locally and will be updated on the network the next time the device is able to sync.");
-					break;
-				case AppStateStatusCodes.STATUS_NETWORK_ERROR_OPERATION_FAILED:
-					Log.e(LOG_TAG,
-							"A network error occurred while attempting to perform an operation that requires network access.");
-					break;
 				case AppStateStatusCodes.STATUS_DEVELOPER_ERROR:
 					Log.e(LOG_TAG,
 							"Your application is incorrectly configured.");
@@ -144,13 +136,6 @@ public class GoogleApiHelper extends Fragment implements
 				case AppStateStatusCodes.STATUS_TIMEOUT:
 					Log.e(LOG_TAG,
 							"The operation timed out while awaiting the result.");
-					break;
-				case AppStateStatusCodes.STATUS_WRITE_OUT_OF_DATE_VERSION:
-					Log.e(LOG_TAG, "A version conflict was detected.");
-					break;
-				case AppStateStatusCodes.STATUS_WRITE_SIZE_EXCEEDED:
-					Log.e(LOG_TAG,
-							"A write request was submitted which contained too much data for the server.");
 					break;
 				default:
 					break;
@@ -480,7 +465,7 @@ public class GoogleApiHelper extends Fragment implements
 	}
 
 	public boolean saveToCloud(boolean async, int stateKey, byte[] data) {
-		boolean result = false;
+		boolean handled = false;
 
 		if (isHelperConnected()) {
 			if (stateKey >= 0
@@ -491,9 +476,10 @@ public class GoogleApiHelper extends Fragment implements
 					AppStateManager.update(mApiClient, stateKey, data);
 				else
 					AppStateManager.updateImmediate(mApiClient, stateKey, data);
+				handled = true;
 			}
 		}
-		return result;
+		return handled;
 	}
 
 	/**
@@ -510,7 +496,7 @@ public class GoogleApiHelper extends Fragment implements
 			if (stateKey >= 0
 					&& stateKey < AppStateManager.getMaxNumKeys(mApiClient)) {
 				AppStateManager.load(mApiClient, stateKey).setResultCallback(
-						mStateResult);
+						mLoadResult);
 				handled = true;
 			}
 		}
@@ -529,7 +515,7 @@ public class GoogleApiHelper extends Fragment implements
 	public void conflictResolvedInCloudSave(int stateKey,
 			String resolvedVersion, byte[] resolvedData) {
 		AppStateManager.resolve(mApiClient, stateKey, resolvedVersion,
-				resolvedData).setResultCallback(mStateResult);
+				resolvedData).setResultCallback(mLoadResult);
 	}
 
 	/**
