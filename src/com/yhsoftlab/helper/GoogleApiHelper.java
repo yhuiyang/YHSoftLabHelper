@@ -50,7 +50,8 @@ public class GoogleApiHelper extends Fragment implements
 
 	/* request codes */
 	private final int REQCODE_RESOLVE_SIGNIN_DEFAULT = 10001;
-	private final int REQCODE_SHOW_LEADBOARD = 10002;
+	private final int REQCODE_SHOW_LEADERBOARD = 10002;
+	private final int REQCODE_SHOW_ACHIEVEMENT = 10003;
 
 	// ===========================================================
 	// Fields
@@ -59,7 +60,8 @@ public class GoogleApiHelper extends Fragment implements
 	private IListener mListener = null;
 	/* Allow activity overwrite this value to avoid conflict. */
 	private int mRCResolveSignIn = REQCODE_RESOLVE_SIGNIN_DEFAULT;
-	private int mRCShowLeaderboard = REQCODE_SHOW_LEADBOARD;
+	private int mRCShowLeaderboard = REQCODE_SHOW_LEADERBOARD;
+	private int mRCShowAchievement = REQCODE_SHOW_ACHIEVEMENT;
 	/**
 	 * Initially, this value is setup by activity via
 	 * {@link android.support.v4.app.Fragment#setArguments(Bundle)
@@ -457,6 +459,40 @@ public class GoogleApiHelper extends Fragment implements
 			result = true;
 		}
 
+		return result;
+	}
+
+	public boolean requestShowAchievements() {
+
+		boolean result = false;
+		if (isHelperConnected()) {
+
+			startActivityForResult(
+					Games.Achievements.getAchievementsIntent(mApiClient),
+					mRCShowAchievement);
+			result = true;
+		}
+		return result;
+	}
+
+	public boolean increaAchievement(int pAchievementId, int numSteps) {
+
+		boolean result = false;
+		if (isHelperConnected()) {
+			Games.Achievements.increment(mApiClient, getString(pAchievementId),
+					numSteps);
+			result = true;
+		}
+		return result;
+	}
+
+	public boolean unlockAchievement(int pAchievementId) {
+
+		boolean result = false;
+		if (isHelperConnected()) {
+			Games.Achievements.unlock(mApiClient, getString(pAchievementId));
+			result = true;
+		}
 		return result;
 	}
 
