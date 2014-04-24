@@ -41,7 +41,6 @@ public class GoogleApiHelper extends Fragment implements
 
 	/* argument keys */
 	public final static String KEY_ARG_REQCODE_RESOLVE_SIGNIN = "ResolveSignIn";
-	public final static String KEY_ARG_REQCODE_SHOW_LEADERBOARD = "ShowLeaderboard";
 	public final static String KEY_ARG_LISTENER_IMPL = "ListenerImpl";
 	public final static String KEY_ARG_AUTO_SIGNIN = "AutoSignIn";
 
@@ -50,8 +49,6 @@ public class GoogleApiHelper extends Fragment implements
 
 	/* request codes */
 	private final int REQCODE_RESOLVE_SIGNIN_DEFAULT = 10001;
-	private final int REQCODE_SHOW_LEADERBOARD = 10002;
-	private final int REQCODE_SHOW_ACHIEVEMENT = 10003;
 
 	// ===========================================================
 	// Fields
@@ -60,8 +57,6 @@ public class GoogleApiHelper extends Fragment implements
 	private IListener mListener = null;
 	/* Allow activity overwrite this value to avoid conflict. */
 	private int mRCResolveSignIn = REQCODE_RESOLVE_SIGNIN_DEFAULT;
-	private int mRCShowLeaderboard = REQCODE_SHOW_LEADERBOARD;
-	private int mRCShowAchievement = REQCODE_SHOW_ACHIEVEMENT;
 	/**
 	 * Initially, this value is setup by activity via
 	 * {@link android.support.v4.app.Fragment#setArguments(Bundle)
@@ -201,8 +196,13 @@ public class GoogleApiHelper extends Fragment implements
 	public void onActivityResult(int requestCode, int resultCode, Intent data) {
 		LogTraceEnter("onActivityResult: " + requestCode + "," + resultCode);
 
-		if (requestCode != mRCResolveSignIn) {
-			Log.w(LOG_TAG, "Request code is not interested, skip...");
+		if (requestCode == mRCResolveSignIn + 1) { /* don't care this result */
+			Log.i(LOG_TAG, "Result of this request is skipped intentionally.");
+			return;
+		} else if (requestCode != mRCResolveSignIn) {
+			Log.w(LOG_TAG, "This is not expected result. "
+					+ "If you do not want this result is missed by other, "
+					+ "you would like to check why we receive this result.");
 			return;
 		}
 
@@ -442,7 +442,7 @@ public class GoogleApiHelper extends Fragment implements
 			 */
 			startActivityForResult(
 					Games.Leaderboards.getAllLeaderboardsIntent(mApiClient),
-					mRCShowLeaderboard);
+					mRCResolveSignIn + 1);
 			result = true;
 		}
 
@@ -455,7 +455,7 @@ public class GoogleApiHelper extends Fragment implements
 
 		if (isHelperConnected()) {
 			startActivityForResult(Games.Leaderboards.getLeaderboardIntent(
-					mApiClient, pLeaderboardId), mRCShowLeaderboard);
+					mApiClient, pLeaderboardId), mRCResolveSignIn + 1);
 			result = true;
 		}
 
@@ -469,7 +469,7 @@ public class GoogleApiHelper extends Fragment implements
 
 			startActivityForResult(
 					Games.Achievements.getAchievementsIntent(mApiClient),
-					mRCShowAchievement);
+					mRCResolveSignIn + 1);
 			result = true;
 		}
 		return result;
