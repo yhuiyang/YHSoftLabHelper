@@ -475,7 +475,7 @@ public class GoogleApiHelper extends Fragment implements
 		return result;
 	}
 
-	public boolean increaAchievement(int pAchievementId, int numSteps) {
+	public boolean achievementIncrement(int pAchievementId, int numSteps) {
 
 		boolean result = false;
 		if (isHelperConnected()) {
@@ -486,7 +486,18 @@ public class GoogleApiHelper extends Fragment implements
 		return result;
 	}
 
-	public boolean unlockAchievement(int pAchievementId) {
+	public boolean achievementSetSteps(int pAchievementId, int numSteps) {
+
+		boolean result = false;
+		if (isHelperConnected()) {
+			Games.Achievements.setSteps(mApiClient, getString(pAchievementId),
+					numSteps);
+			result = true;
+		}
+		return result;
+	}
+
+	public boolean achievementUnlock(int pAchievementId) {
 
 		boolean result = false;
 		if (isHelperConnected()) {
