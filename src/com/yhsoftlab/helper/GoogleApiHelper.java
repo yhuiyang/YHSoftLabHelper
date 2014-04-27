@@ -476,32 +476,42 @@ public class GoogleApiHelper extends Fragment implements
 	}
 
 	public boolean achievementIncrement(int pAchievementId, int numSteps) {
+		return achievementIncrement(getString(pAchievementId), numSteps);
+	}
+
+	public boolean achievementIncrement(String pAchievementId, int numSteps) {
 
 		boolean result = false;
 		if (isHelperConnected()) {
-			Games.Achievements.increment(mApiClient, getString(pAchievementId),
-					numSteps);
+			Games.Achievements.increment(mApiClient, pAchievementId, numSteps);
 			result = true;
 		}
 		return result;
 	}
 
 	public boolean achievementSetSteps(int pAchievementId, int numSteps) {
+		return achievementSetSteps(getString(pAchievementId), numSteps);
+	}
+
+	public boolean achievementSetSteps(String pAchievementId, int numSteps) {
 
 		boolean result = false;
 		if (isHelperConnected()) {
-			Games.Achievements.setSteps(mApiClient, getString(pAchievementId),
-					numSteps);
+			Games.Achievements.setSteps(mApiClient, pAchievementId, numSteps);
 			result = true;
 		}
 		return result;
 	}
 
 	public boolean achievementUnlock(int pAchievementId) {
+		return achievementUnlock(getString(pAchievementId));
+	}
+
+	public boolean achievementUnlock(String pAchievementId) {
 
 		boolean result = false;
 		if (isHelperConnected()) {
-			Games.Achievements.unlock(mApiClient, getString(pAchievementId));
+			Games.Achievements.unlock(mApiClient, pAchievementId);
 			result = true;
 		}
 		return result;
@@ -565,11 +575,19 @@ public class GoogleApiHelper extends Fragment implements
 				resolvedData).setResultCallback(mLoadResult);
 	}
 
-	public void submitScore(String pLeaderboardId, long pRawScore) {
+	public boolean leaderboardSubmitScore(int pLeaderboardId, long pRawScore) {
+		return leaderboardSubmitScore(getString(pLeaderboardId), pRawScore);
+	}
+
+	public boolean leaderboardSubmitScore(String pLeaderboardId, long pRawScore) {
+
+		boolean handled = false;
 		if (isHelperConnected()) {
 			Games.Leaderboards.submitScore(mApiClient, pLeaderboardId,
 					pRawScore);
+			handled = true;
 		}
+		return handled;
 	}
 
 	/**
